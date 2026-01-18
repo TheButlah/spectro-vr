@@ -6,23 +6,41 @@ members = ["sp-app", "sp-analysis"]
 [workspace.package]
 edition = "2024"
 license = "MIT-0 OR Apache-2.0"
-repository = "https://github.com/NexusSocial/nexus-vr"
+repository = "https://github.com/TheButlah/spectro-vr"
 rust-version = "1.92.0"
+authors = ["Ryan Butler <thebutlah@users.noreply.github.com>"]
 
 [workspace.lints.clippy]
 too_many_arguments = "allow"
 type_complexity = "allow"
 
 [workspace.dependencies]
-color-eyre = "0.6.5"
-openxr = "0.21.0"
 clap = { version = "4.5.54", features = ["derive"] }
+color-eyre = "0.6.5"
+cpal = "0.17.1"
+ctrlc = "3.5.1"
+flume = "0.12.0"
+openxr = "0.21.0"
+owo-colors = "4.2.3"
+thiserror = "2.0.17"
+tokio-util = { version = "0.7.18", default-features = false, features = [] }
 tracing = "0.1.44"
 tracing-subscriber = "0.3.22"
-owo-colors = "4.2.3"
 
 # First-party crates
 sp-analysis.path = "sp-analysis"
+
+[workspace.dependencies.tokio]
+version = "1.49.0"
+default-features  = false
+features = [ 
+    "sync",
+    "io-util",
+    "macros",
+    "rt",
+    "time", # not supported on browsers?
+]
+
 
 [profile.release]
 lto = true
