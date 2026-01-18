@@ -1,0 +1,15 @@
+[package]
+name = "sp-app"
+version = "0.0.0"
+description = "The main app"
+
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sp-analysis.workspace = true

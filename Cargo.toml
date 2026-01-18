@@ -1,0 +1,39 @@
+[workspace]
+resolver = "3"
+members = ["sp-app", "sp-analysis"]
+
+# These settings will apply to all members of the workspace that opt in to them
+[workspace.package]
+edition = "2024"
+license = "MIT-0 OR Apache-2.0"
+repository = "https://github.com/NexusSocial/nexus-vr"
+rust-version = "1.92.0"
+
+[workspace.lints.clippy]
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[workspace.dependencies]
+color-eyre = "0.6.5"
+openxr = "0.21.0"
+clap = { version = "4.5.54", features = ["derive"] }
+tracing = "0.1.44"
+tracing-subscriber = "0.3.22"
+owo-colors = "4.2.3"
+
+# First-party crates
+sp-analysis.path = "sp-analysis"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+panic = "abort"
+
+# Enable a small amount of optimization for our own crates.
+[profile.dev]
+opt-level = 1
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3
