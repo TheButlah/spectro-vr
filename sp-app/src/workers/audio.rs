@@ -4,11 +4,11 @@ use color_eyre::{
 };
 use cpal::{
 	InputCallbackInfo, Stream, StreamError,
-	traits::{DeviceTrait as _, HostTrait as _, StreamTrait},
+	traits::{DeviceTrait as _, HostTrait, StreamTrait},
 };
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 #[derive(Debug)]
 struct Joins {
@@ -46,10 +46,12 @@ pub struct AudioWorker {
 impl AudioWorker {
 	/// Creates audio stream then spawns subtasks
 	pub async fn spawn(cancel: CancellationToken) -> Result<AudioWorker> {
-		let stream = tokio::task::spawn_blocking(stream_setup)
-			.await
-			.wrap_err("task panicked")?
-			.wrap_err("failed to set up steam")?;
+		let stream = {
+			tokio::task::spawn_blocking(stream_setup)
+				.await
+				.wrap_err("task panicked")?
+		}
+		.wrap_err("failed to set up steam")?;
 
 		let (rpc_tx, rpc_rx) = flume::unbounded();
 		let supervisor_task =
@@ -136,7 +138,19 @@ async fn supervisor(
 
 /// Blocking function, sets up a stream
 fn stream_setup() -> Result<Stream> {
+	for h in cpal::available_hosts() {
+		debug!("host: {h:?}");
+	}
 	let host = cpal::default_host();
+	info!("using host: {}", host.id());
+
+	for d in host
+		.devices()
+		.wrap_err("failed to enumerate input devices")?
+	{
+		info!("input device: {:?}", d.description());
+	}
+	info!("done enumerating input devices");
 	let device = host
 		.default_input_device()
 		.ok_or_eyre("no input device available")?;
