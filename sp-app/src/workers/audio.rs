@@ -148,12 +148,18 @@ fn stream_setup() -> Result<Stream> {
 		.devices()
 		.wrap_err("failed to enumerate input devices")?
 	{
-		info!("input device: {:?}", d.description());
+		debug!("input device: {:?}", d.description());
 	}
-	info!("done enumerating input devices");
 	let device = host
 		.default_input_device()
 		.ok_or_eyre("no input device available")?;
+	info!(
+		"using device: {}",
+		device
+			.description()
+			.map(|d| d.to_string())
+			.unwrap_or_else(|_| format!("{:?}", device.description()))
+	);
 
 	let mut supported_configs_range = device
 		.supported_input_configs()
