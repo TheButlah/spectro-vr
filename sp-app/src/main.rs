@@ -19,10 +19,9 @@ impl Args {
 			.wrap_err("failed to spawn audio worker")?;
 
 		for _ in 0..4 {
-			audio_worker
-				.ping()
-				.await
-				.wrap_err("failed to ping worker")?;
+			let Ok(()) = audio_worker.ping().await else {
+				break;
+			};
 			tokio::time::sleep(Duration::from_millis(1000)).await;
 		}
 
@@ -39,14 +38,15 @@ impl Args {
 }
 
 fn main() -> Result<()> {
-	color_eyre::install()?;
 	tracing_subscriber::fmt::init();
+	color_eyre::install()?;
+
 	let args = Args::parse();
 
 	let rt = tokio::runtime::Builder::new_current_thread()
 		.enable_all()
 		.build()
-		.wrap_err("failed to initialize tokio runtime")?;
+		.expect("failed to initialize tokio runtime");
 
 	rt.block_on(async_main(args))
 }
@@ -60,20 +60,12 @@ async fn async_main(args: Args) -> Result<()> {
 fn ctrl_c() -> CancellationToken {
 	let cancel = CancellationToken::new();
 
-	#[cfg(target_arch = "wasm32")]
-	{
-		// Do nothing
-	}
-
-	#[cfg(not(target_arch = "wasm32"))]
-	{
-		let cancel_clone = cancel.clone();
-		tokio::spawn(async move {
-			tokio::signal::ctrl_c().await.ok();
-			debug!("detected ctrlc");
-			cancel_clone.cancel();
-		});
-	}
+	let cancel_clone = cancel.clone();
+	tokio::spawn(async move {
+		tokio::signal::ctrl_c().await.ok();
+		debug!("detected ctrlc");
+		cancel_clone.cancel();
+	});
 
 	cancel
 }

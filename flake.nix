@@ -78,18 +78,6 @@
           udev
           fontconfig
           freetype
-
-          # Networking
-          openssl
-
-          # Development tools
-          git
-
-          # Trunk for web builds (if needed)
-          trunk
-
-          # WASM target for web builds
-          wasm-pack
         ];
 
       in
@@ -105,6 +93,7 @@
             cargo-outdated
             cargo-watch
             rust-analyzer
+            taplo
           ];
 
           # Environment variables for proper library linking
