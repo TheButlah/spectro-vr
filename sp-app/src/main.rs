@@ -2,9 +2,14 @@ use std::time::Duration;
 
 use clap::Parser;
 use color_eyre::{Result, eyre::WrapErr as _};
+use cpal::SampleRate;
+use ringbuf::traits::Consumer;
 use sp_app::workers::audio::AudioWorker;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
+
+const BUFFER_DURATION: Duration = Duration::from_millis(100);
+const MIN_SAMPLE_RATE: SampleRate = 44_000;
 
 #[derive(Parser)]
 #[clap(version, author, about)]
@@ -18,12 +23,29 @@ impl Args {
 			.await
 			.wrap_err("failed to spawn audio worker")?;
 
-		for _ in 0..4 {
-			let Ok(()) = audio_worker.ping().await else {
-				break;
-			};
-			tokio::time::sleep(Duration::from_millis(1000)).await;
-		}
+		let (stream, mut rx) = audio_worker
+			.create_stream(BUFFER_DURATION, MIN_SAMPLE_RATE)
+			.await
+			.wrap_err("failed to create stream")?;
+		info!("created stream with sample rate {}", stream.sample_rate());
+
+		let read_task_cancel = cancel.child_token();
+		tokio::task::spawn(read_task_cancel.clone().run_until_cancelled_owned(
+			async move {
+				let _stream = stream;
+				// Pop at 4x the rate that would be needed to prevent the buffer from filling.
+				let mut interval = tokio::time::interval(BUFFER_DURATION / 4);
+				loop {
+					interval.tick().await;
+					let n_samples = rx.0.clear();
+					debug!("encountered {n_samples} samples");
+				}
+			},
+		));
+
+		tokio::time::sleep(Duration::from_millis(1000)).await;
+		info!("stopping stream");
+		read_task_cancel.cancel();
 
 		cancel.cancelled().await;
 		debug!("joining on audio worker");
