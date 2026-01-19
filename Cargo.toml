@@ -19,9 +19,11 @@ clap = { version = "4.5.54", features = ["derive"] }
 color-eyre = "0.6.5"
 cpal = "0.17.1"
 ctrlc = "3.5.1"
+derive_more = "2.1.1"
 flume = "0.12.0"
 openxr = "0.21.0"
 owo-colors = "4.2.3"
+ringbuf = "0.4.8"
 thiserror = "2.0.17"
 tokio-util = { version = "0.7.18", default-features = false, features = [] }
 tracing = "0.1.44"
