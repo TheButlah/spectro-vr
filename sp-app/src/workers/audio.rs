@@ -17,9 +17,11 @@ use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 
+pub type SampleFormat = f32;
+
 /// Receiving side: pops samples from the ringbuffer
 #[derive(derive_more::From, derive_more::Into)]
-pub struct Consumer(pub ringbuf::CachingCons<Arc<HeapRb<f32>>>);
+pub struct Consumer(pub ringbuf::CachingCons<Arc<HeapRb<SampleFormat>>>);
 
 impl Debug for Consumer {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -277,7 +279,7 @@ fn stream_setup(
 	debug!("ringbuffer capacity: {capacity}");
 	let (mut tx, rx) = ringbuf::HeapRb::new(capacity).split();
 
-	let data_cb = move |data: &[f32], _info: &InputCallbackInfo| {
+	let data_cb = move |data: &[SampleFormat], _info: &InputCallbackInfo| {
 		tx.push_slice(data);
 	};
 	let error_cb = move |err: StreamError| warn!(?err, "got error");

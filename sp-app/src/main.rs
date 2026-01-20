@@ -3,8 +3,12 @@ use std::time::Duration;
 use clap::Parser;
 use color_eyre::{Result, eyre::WrapErr as _};
 use cpal::SampleRate;
-use ringbuf::traits::Consumer;
-use sp_app::workers::audio::AudioWorker;
+use ringbuf::traits::{Consumer, Observer};
+use sp_app::{
+	DefaultStftSettings, Spectrogram, StftSettingsExt as _,
+	workers::audio::{AudioWorker, SampleFormat},
+};
+use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
 
@@ -27,25 +31,56 @@ impl Args {
 			.create_stream(BUFFER_DURATION, MIN_SAMPLE_RATE)
 			.await
 			.wrap_err("failed to create stream")?;
-		info!("created stream with sample rate {}", stream.sample_rate());
+		let sample_rate = stream.sample_rate();
+		info!("created stream with sample rate {}", sample_rate);
 
 		let read_task_cancel = cancel.child_token();
-		tokio::task::spawn(read_task_cancel.clone().run_until_cancelled_owned(
-			async move {
-				let _stream = stream;
-				// Pop at 4x the rate that would be needed to prevent the buffer from filling.
-				let mut interval = tokio::time::interval(BUFFER_DURATION / 4);
-				loop {
-					interval.tick().await;
-					let n_samples = rx.0.clear();
-					debug!("encountered {n_samples} samples");
+		let read_task_cancel_clone = read_task_cancel.clone();
+		let (read_task_tx, read_task_rx) = oneshot::channel();
+		tokio::task::spawn(async move {
+			let cancel = read_task_cancel_clone;
+			let _stream_guard = stream; // ensures its droped at end of scope
+			// Pop at 4x the rate that would be needed to prevent the buffer from filling.
+			let mut interval = tokio::time::interval(BUFFER_DURATION / 4);
+			type Settings = DefaultStftSettings;
+			const MAX_CHUNKS_TO_POP: u8 = 8;
+			const MAX_SAMPLES: usize = MAX_CHUNKS_TO_POP as usize * Settings::FFT_SIZE;
+			let mut f32_samples: [SampleFormat; MAX_SAMPLES] = [0.; _];
+			let mut f64_samples = [0f64; MAX_SAMPLES];
+			let mut spec = Spectrogram::<Settings>::new(sample_rate);
+			while !cancel.is_cancelled() {
+				interval.tick().await;
+
+				// Note: Since we are not locking, this can later increase as more
+				// data gets pushed. Thats ok though - we won't pop more than this.
+				let chunks_to_pop = rx.0.occupied_len() / Settings::FFT_SIZE;
+				if chunks_to_pop == 0 {
+					continue;
 				}
-			},
-		));
+				let chunks_to_pop = chunks_to_pop.min(MAX_CHUNKS_TO_POP as usize);
+				let n_samples = chunks_to_pop * Settings::FFT_SIZE;
+				let f32_samples = &mut f32_samples[..n_samples];
+				let f64_samples = &mut f64_samples[..n_samples];
+
+				let n_popped = rx.0.pop_slice(f32_samples);
+				assert_eq!(n_popped, n_samples, "sanity");
+				debug!("popped {n_popped} samples");
+
+				for (idx, s) in f32_samples.iter().copied().enumerate() {
+					f64_samples[idx] = f64::from(s);
+				}
+				let n_pushed = spec.push_samples(f64_samples);
+				debug_assert_eq!(n_pushed, n_popped);
+			}
+			let _ = read_task_tx.send(spec);
+		});
 
 		tokio::time::sleep(Duration::from_millis(1000)).await;
 		info!("stopping stream");
 		read_task_cancel.cancel();
+		if let Ok(spec) = read_task_rx.await {
+			info!("spec: {spec:?}");
+		}
 
 		cancel.cancelled().await;
 		debug!("joining on audio worker");
