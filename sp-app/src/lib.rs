@@ -11,14 +11,13 @@ pub type SampleFormat = f64;
 ///
 /// # Example
 /// ```
+/// # use sp_app::{StftSettings, StftSettingsExt};
 /// struct MySettings;
 /// impl StftSettings for MySettings {
-///     const FFT_SIZE_EXPONENT = 11;
-///     const N_FFT_WINDOWS: 4;
+///     const FFT_SIZE_EXPONENT: u8 = 11;
 /// }
 ///
-/// assert_eq!(MySettings::FFT_SIZE, 2048)
-/// assert_eq!(MySettings::CHUNK_SIZE, 2048 * 4);
+/// assert_eq!(MySettings::FFT_SIZE, 2048);
 /// ```
 pub trait StftSettings {
 	const FFT_SIZE_EXPONENT: u8;

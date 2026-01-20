@@ -60,7 +60,7 @@ jobs:
       - name: Test
         run: |
           nix develop -c \
-            cargo test --all --all-features --all-targets
+            cargo test --all --all-features
 
   deny:
     name: Run cargo deny
