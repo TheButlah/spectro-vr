@@ -1,3 +1,5 @@
+//! Handles the raw audio samples, and loading them into a SPSC ringbuffer
+
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use color_eyre::{
@@ -14,7 +16,7 @@ use ringbuf::{
 };
 use thiserror::Error;
 use tokio::sync::oneshot;
-use tokio_util::sync::CancellationToken;
+use tokio_util::sync::{CancellationToken, DropGuard};
 use tracing::{debug, info, warn};
 
 pub type SampleFormat = f32;
@@ -72,12 +74,13 @@ pub enum Response {
 	StartStreamResponse(Result<(StreamHandle, Consumer)>),
 }
 
-/// A handle to the audio worker and its associates subtasks
+/// A handle to the audio worker and its associated subtasks.
 #[derive(Debug, Clone)]
 pub struct AudioWorker {
 	rpc_tx: flume::Sender<(Request, oneshot::Sender<Response>)>,
 	join_rx: flume::Receiver<Result<()>>,
 	cancel: CancellationToken,
+	_drop_guard: Arc<DropGuard>,
 }
 
 impl AudioWorker {
@@ -93,6 +96,7 @@ impl AudioWorker {
 		let cancel_clone = cancel.clone();
 		tokio::task::spawn(async move {
 			cancel_clone.cancelled().await;
+			debug!("cancelling audio worker");
 			let result = joins.join().await;
 			join_tx.try_send(result).ok();
 		});
@@ -100,6 +104,7 @@ impl AudioWorker {
 		Ok(Self {
 			rpc_tx,
 			join_rx,
+			_drop_guard: Arc::new(cancel.clone().drop_guard()),
 			cancel,
 		})
 	}
