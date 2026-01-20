@@ -69,8 +69,8 @@ impl Args {
 				for (idx, s) in f32_samples.iter().copied().enumerate() {
 					f64_samples[idx] = f64::from(s);
 				}
-				let n_pushed = spec.push_samples(f64_samples);
-				debug_assert_eq!(n_pushed, n_popped);
+				let n_chunks = spec.push_samples(f64_samples);
+				debug_assert_eq!(n_chunks, chunks_to_pop);
 			}
 			let _ = read_task_tx.send(spec);
 		});
