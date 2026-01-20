@@ -1,6 +1,6 @@
 pub mod workers;
 
-use std::marker::PhantomData;
+use std::{collections::VecDeque, marker::PhantomData};
 
 use aus::{WindowType, spectrum::rstft};
 
@@ -76,7 +76,7 @@ impl<T: StftSettings> FrequencyBins<T> {
 #[derive(Debug, Clone)]
 pub struct Spectrogram<T: StftSettings> {
 	freqs: FrequencyBins<T>,
-	magnitudes: Vec<FrequencyMagnitudes>,
+	magnitudes: VecDeque<FrequencyMagnitudes>,
 }
 
 impl<T: StftSettings> Spectrogram<T> {
@@ -85,7 +85,7 @@ impl<T: StftSettings> Spectrogram<T> {
 
 		Self {
 			freqs,
-			magnitudes: Vec::new(),
+			magnitudes: VecDeque::new(),
 		}
 	}
 
@@ -93,9 +93,19 @@ impl<T: StftSettings> Spectrogram<T> {
 		&self.freqs
 	}
 
-	/// Array index corresponds to each timestep of the STFT.
-	pub fn frequency_magnitudes(&self) -> &[FrequencyMagnitudes] {
-		self.magnitudes.as_slice()
+	/// Array index corresponds to each timestep of the STFT. Two slices are returned since
+	/// they are non-contiguous due to the inner VecDeque.
+	pub fn frequency_magnitudes(
+		&self,
+	) -> (&[FrequencyMagnitudes], &[FrequencyMagnitudes]) {
+		self.magnitudes.as_slices()
+	}
+
+	/// Iterates over each timestep of the STFT.
+	pub fn frequency_magnitudes_iter(
+		&self,
+	) -> impl Iterator<Item = &FrequencyMagnitudes> {
+		self.magnitudes.iter()
 	}
 
 	/// # Panics
