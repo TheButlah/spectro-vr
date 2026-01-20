@@ -63,6 +63,7 @@
           vulkan-headers
           vulkan-tools
           libxkbcommon
+          libGL
           wayland
 
           # X11 libraries
