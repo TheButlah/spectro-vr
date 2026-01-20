@@ -1,3 +1,4 @@
+pub mod egui;
 pub mod workers;
 
 use std::{collections::VecDeque, marker::PhantomData};
