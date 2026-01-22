@@ -16,6 +16,7 @@ workspace = true
 aus.workspace = true
 clap.workspace = true
 color-eyre.workspace = true
+colorgrad = { workspace = true, features = ["preset"] }
 cpal.workspace = true
 derive_more = { workspace = true, features = ["from", "into", "debug"] }
 eframe.workspace = true

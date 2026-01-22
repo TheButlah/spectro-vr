@@ -6,6 +6,8 @@ use std::{collections::VecDeque, marker::PhantomData};
 use aus::{WindowType, spectrum::rstft};
 
 pub type SampleFormat = f64;
+pub type Frequency = f64;
+pub type Amplitude = f64;
 
 /// The short time fourier transform (STFT) settings.
 ///
@@ -39,10 +41,10 @@ impl<T: StftSettings> StftSettingsExt for T {}
 
 /// The frequency magnitudes of a particular timestep
 #[derive(Debug, Clone)]
-pub struct FrequencyMagnitudes(Vec<SampleFormat>);
+pub struct FrequencyMagnitudes(Vec<Amplitude>);
 
 impl FrequencyMagnitudes {
-	pub fn as_slice(&self) -> &[SampleFormat] {
+	pub fn as_slice(&self) -> &[Amplitude] {
 		self.0.as_slice()
 	}
 }
@@ -51,7 +53,7 @@ impl FrequencyMagnitudes {
 /// bin.
 #[derive(Debug, Clone)]
 pub struct FrequencyBins<T: StftSettings> {
-	hz: Vec<SampleFormat>,
+	hz: Vec<Frequency>,
 	_phantom: PhantomData<T>,
 }
 
@@ -66,7 +68,7 @@ impl<T: StftSettings> FrequencyBins<T> {
 	}
 
 	/// Get the hz value of each bin
-	pub fn hz(&self) -> &[SampleFormat] {
+	pub fn hz(&self) -> &[Frequency] {
 		self.hz.as_slice()
 	}
 }
@@ -95,17 +97,8 @@ impl<T: StftSettings> Spectrogram<T> {
 
 	/// Array index corresponds to each timestep of the STFT. Two slices are returned since
 	/// they are non-contiguous due to the inner VecDeque.
-	pub fn frequency_magnitudes(
-		&self,
-	) -> (&[FrequencyMagnitudes], &[FrequencyMagnitudes]) {
-		self.magnitudes.as_slices()
-	}
-
-	/// Iterates over each timestep of the STFT.
-	pub fn frequency_magnitudes_iter(
-		&self,
-	) -> impl Iterator<Item = &FrequencyMagnitudes> {
-		self.magnitudes.iter()
+	pub fn frequency_magnitudes(&self) -> &VecDeque<FrequencyMagnitudes> {
+		&self.magnitudes
 	}
 
 	/// # Panics
@@ -119,6 +112,10 @@ impl<T: StftSettings> Spectrogram<T> {
 		self.magnitudes.extend(it);
 
 		n_chunks
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.magnitudes.is_empty()
 	}
 }
 
