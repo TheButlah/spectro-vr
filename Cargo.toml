@@ -18,6 +18,7 @@ type_complexity = "allow"
 aus = "0.1.8"
 clap = { version = "4.5.54", features = ["derive"] }
 color-eyre = "0.6.5"
+colorgrad = "0.8.0"
 cpal = "0.17.1"
 ctrlc = "3.5.1"
 derive_more = "2.1.1"

@@ -3,12 +3,14 @@
 use std::{sync::Arc, time::Duration};
 
 use color_eyre::{Result, eyre::Context};
+use colorgrad::Gradient;
+use egui::Color32;
 use ringbuf::traits::{Consumer as _, Observer as _};
 use tokio_util::sync::{CancellationToken, DropGuard};
 use tracing::debug;
 
 use crate::{
-	DefaultStftSettings, Spectrogram, StftSettingsExt as _,
+	DefaultStftSettings, Spectrogram, StftSettings, StftSettingsExt as _,
 	workers::audio::{Consumer, SampleFormat as AudioWorkerSampleFormat, StreamHandle},
 };
 
@@ -115,8 +117,45 @@ fn entry(
 		let n_chunks = spec.push_samples(f64_samples);
 		debug_assert_eq!(n_chunks, chunks_to_pop);
 
-		// TODO: Do something with the spectrogram
+		// extract_column(spec, column_index, out, gradient)
 	}
 
 	Ok(())
+}
+
+/// Returns whether a colum was extracted or not. Guaranteed to extract as long as
+/// column index is in-bounds of the spec.
+#[expect(dead_code)]
+fn extract_column<T: StftSettings>(
+	spec: &Spectrogram<T>,
+	column_index: usize,
+	out: &mut Vec<Color32>,
+	gradient: impl Gradient,
+) -> bool {
+	let Some(mags) = spec.magnitudes.get(column_index) else {
+		return false;
+	};
+	out.clear();
+	let max_mag = mags
+		.0
+		.iter()
+		.copied()
+		.max_by(|a, b| my_f64_cmp(*a, *b))
+		.expect("infallible: spectrogram should never have 0 frequency bins");
+	dbg!(max_mag);
+	let colors = mags.0.iter().map(|m| {
+		let c = gradient.at(*m as f32).to_linear_rgba_u8();
+		Color32::from_rgb(c[0], c[1], c[2])
+	});
+	out.extend(colors);
+
+	true
+}
+
+fn my_f64_cmp(a: f64, b: f64) -> std::cmp::Ordering {
+	if b >= a {
+		std::cmp::Ordering::Greater
+	} else {
+		std::cmp::Ordering::Less
+	}
 }
